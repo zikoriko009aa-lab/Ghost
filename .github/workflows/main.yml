@@ -1,0 +1,54 @@
+
+name: Build GREEN GHOST APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'GREEN-GHOST-EXPO-PROJECT.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Extract Expo project
+        run: |
+          mkdir -p app
+          unzip -oq GREEN-GHOST-EXPO-PROJECT.zip -d app
+
+          test -f app/package.json
+          test -f app/app.json
+          test -f app/eas.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm install
+
+      - name: Build Android APK
+        working-directory: app
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || {
+            echo "EXPO_TOKEN is missing from GitHub Secrets"
+            exit 1
+          }
+
+          npx --yes eas-cli@latest build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --wait
